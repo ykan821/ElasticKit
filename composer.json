@@ -1,0 +1,44 @@
+{
+    "name": "ykan/elastickit",
+    "description": "Elasticsearch DSL query builder for PHP",
+    "keywords": ["elasticsearch", "dsl", "query", "builder"],
+    "license": "MIT",
+    "type": "library",
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.1",
+        "elasticsearch/elasticsearch": "^8.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "phpstan/phpstan": "^2.1",
+        "friendsofphp/php-cs-fixer": "^3.9",
+        "phpmd/phpmd": "^2.15"
+    },
+    "autoload": {
+        "psr-4": {
+            "ElasticKit\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "ykan",
+            "email": "smykggi@gmail.com"
+        }
+    ],
+    "scripts": {
+        "analyse": "phpstan analyse",
+        "cs-check": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "PHP_CS_FIXER_IGNORE_ENV=1 php-cs-fixer fix"
+    },
+    "config": {
+        "audit": {
+            "block-insecure": false
+        }
+    }
+}

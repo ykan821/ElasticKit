@@ -1,0 +1,80 @@
+<?php
+
+namespace Elastic\Elasticsearch;
+
+/**
+ * @phpstan-type ESResponse array<string, mixed>|object
+ */
+interface ClientInterface
+{
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function search(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function count(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function scroll(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function clearScroll(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function get(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function getSource(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse|bool
+     */
+    public function exists(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function index(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function update(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function delete(array $params = []);
+
+    /**
+     * @param array<string, mixed> $params
+     * @return ESResponse
+     */
+    public function bulk(array $params = []);
+
+    /**
+     * @return \Elastic\Elasticsearch\Endpoints\Indices
+     */
+    public function indices();
+}
