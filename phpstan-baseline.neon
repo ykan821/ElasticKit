@@ -1,0 +1,85 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:bulk\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Bulk.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:delete\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:exists\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:getSource\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:index\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:update\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Doc.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:index\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Index.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:indices\(\)\.$#'
+			identifier: method.notFound
+			count: 17
+			path: src/Index/Manager.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:indices\(\)\.$#'
+			identifier: method.notFound
+			count: 4
+			path: src/Index/Rebuild.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:clearScroll\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Search.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:count\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Search.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:scroll\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Index/Search.php
+
+		-
+			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:search\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Index/Search.php

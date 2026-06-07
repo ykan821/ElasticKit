@@ -1,0 +1,108 @@
+<?php
+
+namespace Elastic\Elasticsearch\Endpoints;
+
+class Indices
+{
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function create(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function delete(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>|bool
+     */
+    public function exists(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>|bool
+     */
+    public function existsAlias(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function get(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function getAlias(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function getMapping(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function getSettings(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function putAlias(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function deleteAlias(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function updateAliases(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function putMapping(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function putSettings(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function refresh(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function forcemerge(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function close(array $params = []) {}
+
+    /**
+     * @param array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    public function open(array $params = []) {}
+}

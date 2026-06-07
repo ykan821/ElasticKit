@@ -1,0 +1,12 @@
+/vendor/
+.claude/
+CLAUDE.local.md
+composer.lock
+.idea
+composer.phar
+.DS_Store
+Thumbs.db
+*.log
+.env
+.php-cs-fixer.cache
+.phpunit.result.cache

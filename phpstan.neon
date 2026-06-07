@@ -1,0 +1,17 @@
+includes:
+    - phpstan-baseline.neon
+parameters:
+    phpVersion: 80100
+    level: 6
+    paths:
+        - src
+    reportUnmatchedIgnoredErrors: false
+    ignoreErrors:
+        -
+            message: '#PHPDoc tag @SuppressWarnings has invalid value#'
+            paths: [src/*]
+    excludePaths:
+        - stubs/*
+    stubFiles:
+        - stubs/ClientInterface.stub
+        - stubs/Indices.stub
