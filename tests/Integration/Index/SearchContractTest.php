@@ -34,6 +34,20 @@ class SearchContractTest extends IntegrationTestCase
         $this->assertSame(2, $count);
     }
 
+    public function testCountIgnoresChainedSearchParams(): void
+    {
+        // _count only accepts a query; size/sort/aggs would make ES reject
+        // the request if they leaked into the body.
+        $count = $this->makeIndex()->newQuery()
+            ->term('status', 'published')
+            ->size(10)
+            ->sort('title', 'asc')
+            ->aggs('by_status', fn ($agg) => $agg->terms('status'))
+            ->count();
+
+        $this->assertSame(2, $count);
+    }
+
     public function testPaginate(): void
     {
         $results = $this->makeIndex()->newQuery()->matchAll()->paginate(1, 2);

@@ -272,30 +272,33 @@ class Search
     }
 
     /**
-     * Execute an ES count call with before/after events.
+     * Execute an ES count call with before/after events. The _count body
+     * accepts a query only; other chained params are dropped.
      *
      * @return array<string, mixed>
      */
     protected function doCount(): array
     {
         $indexName = $this->index->name();
-        $body = $this->query->toArray() ?: new stdClass();
+        $query = $this->query->toArray()['query'] ?? null;
 
         $e = new Event('search.query.before', $indexName);
-        $e->dsl = $body;
+        $e->dsl = $query ?? new stdClass();
         $e->action = 'count';
         EventDispatcher::dispatch($e);
 
+        $params = array_merge(['index' => $indexName], $this->urlParams);
+        if ($query !== null) {
+            $params['body'] = ['query' => $query];
+        }
+
         $start = microtime(true);
-        $response = $this->index->getClient()->count([
-            'index' => $indexName,
-            'body' => $body,
-        ]);
+        $response = $this->index->getClient()->count($params);
         $response = $response->asArray();
         $duration = microtime(true) - $start;
 
         $e = new Event('search.query.after', $indexName);
-        $e->dsl = $body;
+        $e->dsl = $query ?? new stdClass();
         $e->response = $response;
         $e->duration = $duration;
         $e->action = 'count';
