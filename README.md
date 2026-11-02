@@ -211,7 +211,7 @@ foreach (ProductIndex::query()->cursor() as $hit) {
 }
 ```
 
-> **Pagination needs totals, which are opt-in.** `Index` defaults `$trackTotalHits = false`, so `total()`/`lastPage()` return `null` and `toPaginator()` throws. Set `protected int|bool $trackTotalHits = true;` (or a count cap) on the index for page-count pagination, or use `hasMorePages()` / `chunk()` / `cursor()` for total-less iteration.
+> **Pagination needs totals, which are opt-in.** `Index` defaults `$trackTotalHits = false`, so `total()`/`lastPage()` return `null` and `toPaginator()` throws. Set `protected int|bool $trackTotalHits = true;` (or a count cap) on the index for page-count pagination, or use `hasMorePages()` / `chunk()` / `cursor()` for total-less iteration. With a count cap, `total()`/`lastPage()` are lower bounds (`relation: gte`) and `hasMorePages()` keeps signaling past the cap.
 
 ### Document CRUD
 
