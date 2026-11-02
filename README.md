@@ -22,9 +22,10 @@ composer require ykan/elastickit:^8
 use ElasticKit\Index\Index;
 
 // 1. Register the client
-$client = \Elastic\Elasticsearch\ClientBuilder::create()
-    ->setHosts(['http://localhost:9200'])->build();
-Index::setClient($client);
+Index::setClientResolver(
+    fn () => \Elastic\Elasticsearch\ClientBuilder::create()
+        ->setHosts(['http://localhost:9200'])->build()
+);
 
 // 2. Define an index
 class ProductIndex extends Index
@@ -157,11 +158,12 @@ $query = Query::create([
 The clauses of a `bool` query (must / should / filter / must_not) **append** — repeated calls accumulate, they don't overwrite:
 
 ```php
-$q->bool(fn ($b) => $b->must($q1));   // must: [q1]
-$q->bool(fn ($b) => $b->must($q2));   // must: [q1, q2]
+$q->bool(fn ($b) => $b->must($q1)->must($q2));   // must: [q1, q2]
 ```
 
 > `dis_max`, `span_or`, `span_near` and other array-clause containers behave the same way.
+>
+> Two separate `bool()` calls are sibling clauses under one `query` key — Elasticsearch cannot express that, so serialization throws. Build one `bool` and append inside it.
 
 ### Flexible arguments
 

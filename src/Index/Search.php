@@ -131,7 +131,7 @@ class Search
         }
 
         $extra = ['scroll' => $duration];
-        if (!$this->query->hasParam('size')) {
+        if (!isset($this->query->toArray()['size'])) {
             $extra['body'] = ['size' => 1000];
         }
 
@@ -235,7 +235,9 @@ class Search
     public function cursor(string $duration = '5m'): \Generator
     {
         foreach ($this->chunk($duration) as $results) {
-            yield from $results->hits();
+            foreach ($results->hits() as $hit) {
+                yield $hit;
+            }
         }
     }
 
@@ -272,30 +274,33 @@ class Search
     }
 
     /**
-     * Execute an ES count call with before/after events.
+     * Execute an ES count call with before/after events. The _count body
+     * accepts a query only; other chained params are dropped.
      *
      * @return array<string, mixed>
      */
     protected function doCount(): array
     {
         $indexName = $this->index->name();
-        $body = $this->query->toArray() ?: new stdClass();
+        $query = $this->query->toArray()['query'] ?? null;
 
         $e = new Event('search.query.before', $indexName);
-        $e->dsl = $body;
+        $e->dsl = $query ?? new stdClass();
         $e->action = 'count';
         EventDispatcher::dispatch($e);
 
+        $params = array_merge(['index' => $indexName], $this->urlParams);
+        if ($query !== null) {
+            $params['body'] = ['query' => $query];
+        }
+
         $start = microtime(true);
-        $response = $this->index->getClient()->count([
-            'index' => $indexName,
-            'body' => $body,
-        ]);
+        $response = $this->index->getClient()->count($params);
         $response = $response->asArray();
         $duration = microtime(true) - $start;
 
         $e = new Event('search.query.after', $indexName);
-        $e->dsl = $body;
+        $e->dsl = $query ?? new stdClass();
         $e->response = $response;
         $e->duration = $duration;
         $e->action = 'count';
@@ -315,17 +320,17 @@ class Search
     {
         $indexName = $this->index->name();
 
-        // Apply the index's track_total_hits default unless explicitly set.
-        // Skipped for scroll: ES forbids disabling track_total_hits in a scroll context.
-        if ($action !== 'scroll' && !$this->query->hasParam('track_total_hits')) {
-            $this->query->trackTotalHits($this->index->trackTotalHits());
-        }
-
         $body = $this->query->toArray();
         if (isset($extra['body'])) {
             $body = array_merge($body, $extra['body']);
             unset($extra['body']);
         }
+
+        // Scroll is excluded: ES rejects a disabled track_total_hits there.
+        if ($action !== 'scroll' && !isset($body['track_total_hits'])) {
+            $body['track_total_hits'] = $this->index->trackTotalHits();
+        }
+
         $body = $body ?: new stdClass();
 
         $e = new Event('search.query.before', $indexName);

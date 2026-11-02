@@ -81,7 +81,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Elastic\\Elasticsearch\\ClientInterface\:\:indices\(\)\.$#'
 			identifier: method.notFound
-			count: 5
+			count: 7
 			path: src/Index/Rebuild.php
 
 		-

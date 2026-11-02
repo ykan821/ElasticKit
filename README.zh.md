@@ -22,9 +22,10 @@ composer require ykan/elastickit:^8
 use ElasticKit\Index\Index;
 
 // 1. 注册 Client
-$client = \Elastic\Elasticsearch\ClientBuilder::create()
-    ->setHosts(['http://localhost:9200'])->build();
-Index::setClient($client);
+Index::setClientResolver(
+    fn () => \Elastic\Elasticsearch\ClientBuilder::create()
+        ->setHosts(['http://localhost:9200'])->build()
+);
 
 // 2. 定义索引
 class ProductIndex extends Index
@@ -157,11 +158,12 @@ $query = Query::create([
 `bool` 查询的子句（must / should / filter / must_not）**累加追加**——重复调用会累加，而非覆盖：
 
 ```php
-$q->bool(fn ($b) => $b->must($q1));   // must: [q1]
-$q->bool(fn ($b) => $b->must($q2));   // must: [q1, q2]
+$q->bool(fn ($b) => $b->must($q1)->must($q2));   // must: [q1, q2]
 ```
 
 > `dis_max`、`span_or`、`span_near` 等其他数组子句容器同理。
+>
+> 两次独立的 `bool()` 调用是同一 `query` 键下的兄弟子句——ES 无法表达，序列化会抛异常。请在一个 `bool` 内部追加。
 
 ### 灵活入参
 

@@ -207,6 +207,8 @@ class Results
     /**
      * Return the last page number, or null when the total is unavailable.
      *
+     * With a capped total (relation "gte") this is a lower bound.
+     *
      * @return int|null
      */
     public function lastPage(): ?int
@@ -225,19 +227,30 @@ class Results
     /**
      * Whether there is a page after the current one.
      *
-     * With a known total: page() < lastPage(). Without one (track_total_hits
-     * is false): a full page implies more, a partial page is the last.
+     * With an exact total: page() < lastPage(). Without one, or with a capped
+     * one (relation "gte", where the total is only a lower bound): a full page
+     * implies more, a partial page is the last.
      *
      * @return bool
      */
     public function hasMorePages(): bool
     {
+        if ($this->totalRelation() === 'gte') {
+            return $this->page * $this->perPage < $this->total()
+                || $this->fullPage();
+        }
+
         $lastPage = $this->lastPage();
 
         if ($lastPage !== null) {
             return $this->page < $lastPage;
         }
 
+        return $this->fullPage();
+    }
+
+    private function fullPage(): bool
+    {
         return $this->perPage > 0 && count($this->hits()) === $this->perPage;
     }
 

@@ -141,6 +141,17 @@ JSON;
         $this->assertQuery($expectedJson, $query);
     }
 
+    public function testSeparateBoolCallsAreSiblingClausesAndThrow()
+    {
+        $query = new Query();
+        $query->bool(fn ($b) => $b->must(['match' => ['title' => 'a']]));
+        $query->bool(fn ($b) => $b->must(['match' => ['title' => 'b']]));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate query clause key "bool"');
+        $query->toArray();
+    }
+
     public function testBoolArrayWithListAppendsMultipleClauses()
     {
         $expectedJson = <<<JSON
