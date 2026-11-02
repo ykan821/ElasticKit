@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace Tests;
 
-use Elastic\Elasticsearch\ClientInterface;
 use ElasticKit\DSL\Query;
 use ElasticKit\Index\Index;
 use ElasticKit\Index\Support\ClientManager;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\RequestInterface;
+use Tests\Support\FakeClient;
 
 /**
  * Search::count() request shape — _count accepts a query in the body only,
@@ -17,13 +16,13 @@ use Psr\Http\Message\RequestInterface;
  */
 final class SearchCountTest extends TestCase
 {
-    private FakeCountClient $client;
+    private FakeClient $client;
 
     private Index $index;
 
     protected function setUp(): void
     {
-        $this->client = new FakeCountClient(['count' => [['count' => 2]]]);
+        $this->client = new FakeClient(['count' => [['count' => 2]]]);
         ClientManager::set($this->client);
 
         $this->index = new class extends Index {
@@ -79,95 +78,13 @@ final class SearchCountTest extends TestCase
         $query = new Query([
             'query' => ['term' => ['status' => 'published']],
             'size' => 20,
-            'sort' => [['price' => 'asc']],
-        ]);
+            'sort' => [['price' => 'asc']]],
+        );
 
         $this->index->newQuery($query)->count();
 
         [$call] = $this->client->calls;
         $this->assertSame(['query'], array_keys($call['params']['body']));
         $this->assertSame(['term' => ['status' => 'published']], $call['params']['body']['query']);
-    }
-}
-
-final class FakeCountClient implements ClientInterface
-{
-    /** @var array<int, array{method: string, params: array<string, mixed>}> */
-    public array $calls = [];
-
-    public function __construct(
-        /** @var array<string, array<int, array<string, mixed>>> */
-        private array $responses = []
-    ) {
-    }
-
-    public function __call(string $method, array $args): FakeCountResult
-    {
-        $this->calls[] = ['method' => $method, 'params' => $args[0] ?? []];
-
-        $queue = $this->responses[$method] ?? [];
-        $body = array_shift($queue);
-        $this->responses[$method] = $queue;
-
-        return new FakeCountResult(is_array($body) ? $body : []);
-    }
-
-    public function getTransport(): \Elastic\Transport\Transport
-    {
-        throw new \LogicException('unused');
-    }
-
-    public function getLogger(): \Psr\Log\LoggerInterface
-    {
-        throw new \LogicException('unused');
-    }
-
-    public function setAsync(bool $async): ClientInterface
-    {
-        return $this;
-    }
-
-    public function getAsync(): bool
-    {
-        return false;
-    }
-
-    public function setElasticMetaHeader(bool $active): ClientInterface
-    {
-        return $this;
-    }
-
-    public function getElasticMetaHeader(): bool
-    {
-        return true;
-    }
-
-    public function setResponseException(bool $active): ClientInterface
-    {
-        return $this;
-    }
-
-    public function getResponseException(): bool
-    {
-        return true;
-    }
-
-    public function sendRequest(RequestInterface $request)
-    {
-        throw new \LogicException('unused');
-    }
-}
-
-final class FakeCountResult
-{
-    public function __construct(
-        private readonly array $body
-    ) {
-    }
-
-    /** @return array<string, mixed> */
-    public function asArray(): array
-    {
-        return $this->body;
     }
 }
