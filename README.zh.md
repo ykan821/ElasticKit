@@ -211,7 +211,7 @@ foreach (ProductIndex::query()->cursor() as $hit) {
 }
 ```
 
-> **分页要总数，而总数默认关闭。** `Index` 默认 `$trackTotalHits = false`，`total()`/`lastPage()` 返 `null`、`toPaginator()` 抛异常。需要页码分页时在索引上设 `protected int|bool $trackTotalHits = true;`（或计数上限）；否则用 `hasMorePages()` / `chunk()` / `cursor()` 做无总数遍历。
+> **分页要总数，而总数默认关闭。** `Index` 默认 `$trackTotalHits = false`，`total()`/`lastPage()` 返 `null`、`toPaginator()` 抛异常。需要页码分页时在索引上设 `protected int|bool $trackTotalHits = true;`（或计数上限）；否则用 `hasMorePages()` / `chunk()` / `cursor()` 做无总数遍历。设为计数上限时，`total()`/`lastPage()` 为下界（`relation: gte`），`hasMorePages()` 在超过上限后仍会继续给出信号。
 
 ### 文档 CRUD
 

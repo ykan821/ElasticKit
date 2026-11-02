@@ -284,15 +284,15 @@ class Search
         $indexName = $this->index->name();
         $query = $this->query->toArray()['query'] ?? null;
 
-        $e = new Event('search.query.before', $indexName);
-        $e->dsl = $query ?? new stdClass();
-        $e->action = 'count';
-        EventDispatcher::dispatch($e);
-
         $params = array_merge(['index' => $indexName], $this->urlParams);
         if ($query !== null) {
             $params['body'] = ['query' => $query];
         }
+
+        $e = new Event('search.query.before', $indexName);
+        $e->dsl = $params['body'] ?? new stdClass();
+        $e->action = 'count';
+        EventDispatcher::dispatch($e);
 
         $start = microtime(true);
         $response = $this->index->getClient()->count($params);
@@ -300,7 +300,7 @@ class Search
         $duration = microtime(true) - $start;
 
         $e = new Event('search.query.after', $indexName);
-        $e->dsl = $query ?? new stdClass();
+        $e->dsl = $params['body'] ?? new stdClass();
         $e->response = $response;
         $e->duration = $duration;
         $e->action = 'count';
