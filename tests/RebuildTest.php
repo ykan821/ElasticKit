@@ -18,7 +18,7 @@ use Tests\Support\FakeClient;
  * alias may already point to (lost-response ambiguity), while verified orphans
  * are removed and the original exception is never masked.
  */
-final class RebuildCleanupTest extends TestCase
+final class RebuildTest extends TestCase
 {
     protected function tearDown(): void
     {
@@ -99,8 +99,7 @@ final class RebuildCleanupTest extends TestCase
 
     public function testPutAliasFailureWithMissingAliasDeletesOrphan(): void
     {
-        // Alias does not exist yet (fresh install path); the 404 verifies the
-        // swap never landed, so the orphan is safe to delete.
+        // Fresh-install path: a 404 proves the swap never landed.
         $notFound = new ClientResponseException();
         $notFound->setResponse(new Response(404));
 

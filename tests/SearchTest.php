@@ -14,7 +14,7 @@ use Tests\Support\FakeClient;
  * Search::count() request shape — _count accepts a query in the body only,
  * so chained search params are projected away and routing is carried.
  */
-final class SearchCountTest extends TestCase
+final class SearchTest extends TestCase
 {
     private FakeClient $client;
 
