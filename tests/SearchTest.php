@@ -154,6 +154,27 @@ final class SearchTest extends TestCase
         $this->assertSame(20, $call['params']['body']['size']);
     }
 
+    public function testCursorYieldsContinuousKeysAcrossBatches(): void
+    {
+        // yield from would keep each batch's 0-based keys, so
+        // iterator_to_array() dropped all but the last batch.
+        $batch = fn (array $ids) => [
+            'hits' => ['hits' => array_map(fn ($id) => ['_id' => $id, '_source' => []], $ids)],
+            '_scroll_id' => 'sid',
+        ];
+
+        $client = $this->client([
+            'search' => [$batch(['1', '2'])],
+            'scroll' => [$batch(['3', '4']), $batch([])],
+            'clearScroll' => [[]],
+        ]);
+
+        $hits = iterator_to_array($this->index->newQuery()->cursor());
+
+        $this->assertSame(['1', '2', '3', '4'], array_column($hits, '_id'));
+        $this->assertSame([0, 1, 2, 3], array_keys($hits));
+    }
+
     /**
      * @param array<string, array<int, mixed>> $script
      */
