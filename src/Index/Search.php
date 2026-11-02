@@ -131,7 +131,7 @@ class Search
         }
 
         $extra = ['scroll' => $duration];
-        if (!$this->query->hasParam('size')) {
+        if (!isset($this->query->toArray()['size'])) {
             $extra['body'] = ['size' => 1000];
         }
 
@@ -318,17 +318,17 @@ class Search
     {
         $indexName = $this->index->name();
 
-        // Apply the index's track_total_hits default unless explicitly set.
-        // Skipped for scroll: ES forbids disabling track_total_hits in a scroll context.
-        if ($action !== 'scroll' && !$this->query->hasParam('track_total_hits')) {
-            $this->query->trackTotalHits($this->index->trackTotalHits());
-        }
-
         $body = $this->query->toArray();
         if (isset($extra['body'])) {
             $body = array_merge($body, $extra['body']);
             unset($extra['body']);
         }
+
+        // Scroll is excluded: ES rejects a disabled track_total_hits there.
+        if ($action !== 'scroll' && !isset($body['track_total_hits'])) {
+            $body['track_total_hits'] = $this->index->trackTotalHits();
+        }
+
         $body = $body ?: new stdClass();
 
         $e = new Event('search.query.before', $indexName);
