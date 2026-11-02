@@ -264,6 +264,33 @@ class ResultsTest extends TestCase
         $this->assertFalse($results->hasMorePages()); // partial page -> last
     }
 
+    public function testHasMorePagesTreatsCappedTotalAsLowerBound()
+    {
+        $make = fn (int $page, int $hitCount) => (new Results([
+            'hits' => [
+                'total' => ['value' => 100, 'relation' => 'gte'],
+                'hits' => array_fill(0, $hitCount, ['_id' => 'x', '_source' => []]),
+            ],
+        ]))->paginate($page, 10);
+
+        $this->assertTrue($make(5, 10)->hasMorePages());  // below the bound
+        $this->assertTrue($make(10, 10)->hasMorePages());  // at the bound, full page: more may follow
+        $this->assertFalse($make(10, 6)->hasMorePages());  // at the bound, partial: last
+        $this->assertFalse($make(12, 6)->hasMorePages());  // past the bound, partial: last
+    }
+
+    public function testLastPageIsALowerBoundEstimateWhenCapped()
+    {
+        $results = (new Results([
+            'hits' => [
+                'total' => ['value' => 100, 'relation' => 'gte'],
+                'hits' => [],
+            ],
+        ]))->paginate(1, 10);
+
+        $this->assertSame(10, $results->lastPage());
+    }
+
     public function testToPaginatorThrowsWhenTotalUnavailable()
     {
         $results = (new Results(['hits' => ['hits' => []]]))->paginate(1, 15);
