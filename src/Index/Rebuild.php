@@ -260,7 +260,8 @@ class Rebuild
         try {
             $this->import($newIndex, $context);
         } catch (\Throwable $e) {
-            $client->delete(['index' => $newIndex]);
+            // Import precedes every alias write, so the new index is always a safe orphan.
+            $this->deleteQuietly($newIndex);
             throw $e;
         }
 
@@ -288,8 +289,33 @@ class Rebuild
                 $client->putAlias(['index' => $newIndex, 'name' => $name]);
             }
         } catch (\Throwable $e) {
-            // Swap failed (or precondition unmet) — remove the orphaned new index.
-            $client->delete(['index' => $newIndex]);
+            // A lost response can leave the swap applied — never delete an index
+            // the alias may already point to; keep it when in doubt.
+            $swapped = $this->aliasPointsTo($name, $newIndex);
+
+            if ($swapped === true) {
+                throw new RuntimeException(sprintf(
+                    'Rebuild for [%s]: the swap failed, but alias [%s] already points to [%s] '
+                    . '(updateAliases may have been applied before the failure). '
+                    . 'The new index was kept. Inspect the cluster, then rollback() or clean() manually.',
+                    $name,
+                    $name,
+                    $newIndex
+                ), 0, $e);
+            }
+
+            if ($swapped === null) {
+                throw new RuntimeException(sprintf(
+                    'Rebuild for [%s]: the swap failed and the alias state could not be verified. '
+                    . 'The new index [%s] was kept to avoid deleting possibly live data. '
+                    . 'Inspect the cluster, then rollback() or clean() manually.',
+                    $name,
+                    $newIndex
+                ), 0, $e);
+            }
+
+            // Alias verifiably does not point to the new index — a safe orphan.
+            $this->deleteQuietly($newIndex);
             throw $e;
         }
 
@@ -299,6 +325,40 @@ class Rebuild
         EventDispatcher::dispatch($e);
 
         return ['newIndex' => $newIndex, 'oldIndex' => $oldIndex];
+    }
+
+    /**
+     * Whether $alias currently resolves to $index.
+     *
+     * True/false when the alias state is verifiable (false includes "alias
+     * does not exist"); null when it cannot be verified (non-404 failure).
+     */
+    private function aliasPointsTo(string $alias, string $index): ?bool
+    {
+        try {
+            $backing = array_keys(
+                $this->index->getClient()->indices()->getAlias(['name' => $alias])->asArray()
+            );
+        } catch (ClientResponseException $e) {
+            return $e->getResponse()->getStatusCode() === 404 ? false : null;
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return in_array($index, $backing, true);
+    }
+
+    /**
+     * Best-effort cleanup delete; a failure here must not mask the exception
+     * being handled. A leftover backing index is removable via clean().
+     */
+    private function deleteQuietly(string $index): void
+    {
+        try {
+            $this->index->getClient()->indices()->delete(['index' => $index]);
+        } catch (\Throwable) {
+            // Swallow: the original failure is what the caller needs to see.
+        }
     }
 
     /**
