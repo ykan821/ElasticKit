@@ -1,5 +1,25 @@
 # Changelog
 
+## [8.1.0] - 2026-11-02
+
+### Added
+
+- `Bulk::options()` — instance-level bulk options (`refresh`, `timeout`, ...) applied to every flush, including the `batchSize()` auto-flush; `flush($options)` still overrides per call.
+- `Index::setClientResolver()` / `ClientManager::setResolver()` — register a lazy per-connection client builder, memoized on first use.
+
+### Fixed
+
+- `Rebuild`: the failure cleanup could delete a backing index the alias had already switched to (lost `updateAliases` response). The alias is verified before deleting; ambiguous outcomes keep the index and point to `rollback()`/`clean()`. Cleanup failures no longer mask the original exception.
+- `Search::count()` sent the full search body to `_count`, which accepts a query only — any chained param (`size`, `sort`, `aggs`, ...) failed with 400. The body is now projected down to the query (omitted when empty); `routing()` is carried.
+- `Search` wrote the index's `track_total_hits` default back into the shared query: `scroll()` after `get()` sent a disabled total into a scroll context (ES rejects it) and a raw-body `track_total_hits: true` was silently overridden. Defaults now merge into the request only; `scroll()`'s batch-size default no longer overrides a raw-body `size`.
+- `Results::hasMorePages()` treated a capped total (`relation: gte`) as exact and stopped pagination at the cap boundary. A `gte` total now only proves pages below it exist; the full-page heuristic applies at or past the bound. `lastPage()` keeps the bound-derived estimate.
+- `Search::cursor()` kept each scroll batch's 0-based keys, so `iterator_to_array()` dropped all but the last batch; hits now yield with continuous keys.
+
+### Changed
+
+- `DeepClone` moved to `ElasticKit\DSL\Support` and marked `@internal`.
+- README: the clause-append example now appends inside a single `bool`; capped-total pagination documented (EN/ZH).
+
 ## [8.0.0] - 2026-06-30
 
 First stable release. The public API is now frozen: public method parameter
