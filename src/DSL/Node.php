@@ -57,6 +57,15 @@ abstract class Node
     protected bool $_fieldKeyed = false;
 
     /**
+     * Parameter keys that serialize beside the field name instead of inside
+     * the field object, where ES expects them for certain field-keyed queries
+     * (boost/_name on terms, validation_method on geo queries).
+     *
+     * @var array<int, string>
+     */
+    protected array $_siblingKeys = [];
+
+    /**
      * The field name used as the top-level attribute of a node.
      *
      * @var string
@@ -278,9 +287,13 @@ abstract class Node
     /**
      * Wrap properties under the field name for field-keyed nodes.
      *
+     * Keys declared in $_siblingKeys are lifted beside the field name, where
+     * ES requires them for parameters that do not belong to the field object.
+     *
      * @param mixed $properties
      * @return mixed
-     * @throws LogicException when the node is field-keyed but no field was set
+     * @throws LogicException when the node is field-keyed but no field was set,
+     *                         or a sibling key collides with the field name
      */
     protected function wrapFieldKeyed($properties): mixed
     {
@@ -293,7 +306,27 @@ abstract class Node
                 static::class
             ));
         }
-        return [$this->_field => $properties];
+        $siblings = [];
+        if ($this->_siblingKeys !== [] && is_array($properties)) {
+            foreach ($this->_siblingKeys as $key) {
+                if (!array_key_exists($key, $properties)) {
+                    continue;
+                }
+                if ($key === $this->_field) {
+                    throw new LogicException(sprintf(
+                        '%s cannot serialize sibling key "%s" because it collides with the field name.',
+                        static::class,
+                        $key
+                    ));
+                }
+                $siblings[$key] = $properties[$key];
+                unset($properties[$key]);
+            }
+        }
+        if ($siblings === []) {
+            return [$this->_field => $properties];
+        }
+        return [$this->_field => $properties, ...$siblings];
     }
 
     /**

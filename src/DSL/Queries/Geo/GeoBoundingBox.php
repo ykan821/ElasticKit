@@ -17,6 +17,8 @@ class GeoBoundingBox extends Node
 
     protected bool $_fieldKeyed = true;
 
+    protected array $_siblingKeys = ['validation_method', 'ignore_unmapped', 'boost', '_name'];
+
     /**
      * Top-left corner of the bounding box.
      *

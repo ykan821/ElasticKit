@@ -19,6 +19,8 @@ class Shape extends Node
 
     protected bool $_fieldKeyed = true;
 
+    protected array $_siblingKeys = ['boost', '_name'];
+
     /**
      * Inline shape definition. Contains the shape type and coordinates.
      *

@@ -58,6 +58,36 @@ JSON;
         $this->assertQuery($exampleJson, $query);
     }
 
+    public function testGeoBoundingBoxSiblingParamsSerializeBesideField()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "geo_bounding_box": {
+      "pin.location": {
+        "top_left": { "lat": 40.73, "lon": -74.1 },
+        "bottom_right": { "lat": 40.01, "lon": -71.12 }
+      },
+      "validation_method": "COERCE",
+      "ignore_unmapped": true,
+      "boost": 2.0,
+      "_name": "ny-box"
+    }
+  }
+}
+JSON;
+        $query = new Query();
+        $query->geoBoundingBox('pin.location', function (GeoBoundingBox $box) {
+            $box->topLeft(['lat' => 40.73, 'lon' => -74.1])
+                ->bottomRight(['lat' => 40.01, 'lon' => -71.12])
+                ->validationMethod('COERCE')
+                ->ignoreUnmapped(true)
+                ->boost(2.0)
+                ->_name('ny-box');
+        });
+        $this->assertQuery($expectedJson, $query);
+    }
+
     public function testGeoDistance()
     {
         $exampleJson = <<<JSON
@@ -165,6 +195,40 @@ JSON;
         $this->assertQuery($exampleJson, $query);
     }
 
+    public function testGeoPolygonSiblingParamsSerializeBesideField()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "geo_polygon": {
+      "person.location": {
+        "points": [
+          { "lat": 40, "lon": -70 },
+          { "lat": 30, "lon": -80 },
+          { "lat": 20, "lon": -90 }
+        ]
+      },
+      "validation_method": "COERCE",
+      "boost": 2.0,
+      "_name": "triangle"
+    }
+  }
+}
+JSON;
+        $query = new Query();
+        $query->geoPolygon('person.location', function (GeoPolygon $polygon) {
+            $polygon->points([
+                    ['lat' => 40, 'lon' => -70],
+                    ['lat' => 30, 'lon' => -80],
+                    ['lat' => 20, 'lon' => -90],
+                ])
+                ->validationMethod('COERCE')
+                ->boost(2.0)
+                ->_name('triangle');
+        });
+        $this->assertQuery($expectedJson, $query);
+    }
+
     public function testGeoShape()
     {
         $exampleJson = <<<JSON
@@ -202,5 +266,33 @@ JSON;
             });
         });
         $this->assertQuery($exampleJson, $query);
+    }
+
+    public function testGeoShapeSiblingParamsSerializeBesideField()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "geo_shape": {
+      "location": {
+        "shape": { "type": "envelope", "coordinates": [[13.0, 53.0], [14.0, 52.0]] },
+        "relation": "within"
+      },
+      "ignore_unmapped": true,
+      "boost": 2.0,
+      "_name": "gs"
+    }
+  }
+}
+JSON;
+        $query = new Query();
+        $query->geoShape('location', function (GeoShape $geoShape) {
+            $geoShape->shape(['type' => 'envelope', 'coordinates' => [[13.0, 53.0], [14.0, 52.0]]])
+                ->relation('within')
+                ->ignoreUnmapped(true)
+                ->boost(2.0)
+                ->_name('gs');
+        });
+        $this->assertQuery($expectedJson, $query);
     }
 }

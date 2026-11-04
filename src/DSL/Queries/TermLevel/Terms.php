@@ -12,6 +12,8 @@ class Terms extends Node
 
     protected bool $_fieldKeyed = true;
 
+    protected array $_siblingKeys = ['boost', '_name'];
+
     /**
      * Field you wish to search.
      *

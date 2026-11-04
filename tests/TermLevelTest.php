@@ -6,6 +6,7 @@ use ElasticKit\DSL\Queries\TermLevel\Fuzzy;
 use ElasticKit\DSL\Queries\TermLevel\Prefix;
 use ElasticKit\DSL\Queries\TermLevel\Range;
 use ElasticKit\DSL\Queries\TermLevel\Regexp;
+use ElasticKit\DSL\Queries\TermLevel\Terms;
 use ElasticKit\DSL\Queries\TermLevel\TermsSet;
 use ElasticKit\DSL\Queries\TermLevel\Wildcard;
 
@@ -104,6 +105,38 @@ JSON;
         $query = new Query();
         $query->terms('status', ['pending', 'published']);
         $this->assertQuery($expectedJson, $query);
+    }
+
+    public function testTermsSiblingParamsSerializeBesideField()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "terms": {
+      "status": ["pending", "published"],
+      "boost": 2.0,
+      "_name": "status-filter"
+    }
+  }
+}
+JSON;
+        $terms = new Terms('status', ['pending', 'published']);
+        $terms->boost(2.0)->_name('status-filter');
+        $query = new Query();
+        $query->terms($terms);
+        $this->assertQuery($expectedJson, $query);
+    }
+
+    public function testTermsSiblingKeyCollisionWithFieldNameThrows()
+    {
+        $this->expectException(LogicException::class);
+        (new Terms('boost', ['a', 'b']))->boost(2.0)->toArray();
+    }
+
+    public function testTermsFieldNameMatchingSiblingKeyWorksWhenParamUnset()
+    {
+        $terms = new Terms('boost', ['a', 'b']);
+        $this->assertSame(['boost' => ['a', 'b']], $terms->toArray());
     }
 
     public function testRange()

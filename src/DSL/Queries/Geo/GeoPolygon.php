@@ -17,6 +17,8 @@ class GeoPolygon extends Node
 
     protected bool $_fieldKeyed = true;
 
+    protected array $_siblingKeys = ['validation_method', 'ignore_unmapped', 'boost', '_name'];
+
     /**
      * Array of geo points that define the polygon.
      * At least three points are required to form a polygon.

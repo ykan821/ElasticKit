@@ -20,6 +20,8 @@ class GeoShape extends Node
 
     protected bool $_fieldKeyed = true;
 
+    protected array $_siblingKeys = ['ignore_unmapped', 'boost', '_name'];
+
     /**
      * Inline shape definition using GeoJSON or Well-Known Text (WKT).
      * Contains the shape type and coordinates.
