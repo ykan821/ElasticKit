@@ -60,7 +60,7 @@ JSON;
 
     public function testGeoBoundingBoxSiblingParamsSerializeBesideField()
     {
-        $expectedJson = <<<JSON
+        $exampleJson = <<<JSON
 {
   "query": {
     "geo_bounding_box": {
@@ -85,7 +85,7 @@ JSON;
                 ->boost(2.0)
                 ->_name('ny-box');
         });
-        $this->assertQuery($expectedJson, $query);
+        $this->assertQuery($exampleJson, $query);
     }
 
     public function testGeoDistance()
@@ -197,7 +197,7 @@ JSON;
 
     public function testGeoPolygonSiblingParamsSerializeBesideField()
     {
-        $expectedJson = <<<JSON
+        $exampleJson = <<<JSON
 {
   "query": {
     "geo_polygon": {
@@ -226,7 +226,7 @@ JSON;
                 ->boost(2.0)
                 ->_name('triangle');
         });
-        $this->assertQuery($expectedJson, $query);
+        $this->assertQuery($exampleJson, $query);
     }
 
     public function testGeoShape()
@@ -270,7 +270,7 @@ JSON;
 
     public function testGeoShapeSiblingParamsSerializeBesideField()
     {
-        $expectedJson = <<<JSON
+        $exampleJson = <<<JSON
 {
   "query": {
     "geo_shape": {
@@ -293,6 +293,6 @@ JSON;
                 ->boost(2.0)
                 ->_name('gs');
         });
-        $this->assertQuery($expectedJson, $query);
+        $this->assertQuery($exampleJson, $query);
     }
 }
