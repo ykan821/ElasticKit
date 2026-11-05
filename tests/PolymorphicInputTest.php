@@ -252,4 +252,85 @@ class PolymorphicInputTest extends DslTestCase
         $this->assertEquals(['match' => ['title' => 'test']], $q->toArray()['query']);
     }
 
+    // --- Raw DSL nested into containers: both stores must merge ---
+
+    public function testRawQueryNestedInBoolClauses()
+    {
+        $bool = new Boolean();
+        $bool->filter(Query::create(['query' => ['term' => ['tenant_id' => 7]]]));
+        $bool->must(Query::create(['query' => ['match' => ['title' => 'x']]]));
+        $bool->should(Query::create(['query' => ['term' => ['status' => 1]]]));
+        $bool->mustNot(Query::create(['query' => ['term' => ['deleted' => 1]]]));
+
+        $query = new Query();
+        $query->bool($bool);
+        $this->assertQuery(
+            '{"query":{"bool":{"filter":[{"term":{"tenant_id":7}}],"must":[{"match":{"title":"x"}}],"should":[{"term":{"status":1}}],"must_not":[{"term":{"deleted":1}}]}}}',
+            $query
+        );
+    }
+
+    public function testRawQueryAddedViaAddQuery()
+    {
+        $q = new Query();
+        $q->addQuery(Query::create(['query' => ['term' => ['tenant_id' => 7]]]));
+        $this->assertEquals(['term' => ['tenant_id' => 7]], $q->toArray()['query']);
+    }
+
+    public function testRawQueryAddedViaWhen()
+    {
+        $q = new Query();
+        $q->when(true, Query::create(['query' => ['term' => ['tenant_id' => 7]]]));
+        $this->assertEquals(['term' => ['tenant_id' => 7]], $q->toArray()['query']);
+    }
+
+    public function testRawArrayWithQueryKeyAsClauseIsUnwrapped()
+    {
+        $q = new Query();
+        $q->addQuery(['query' => ['term' => ['tenant_id' => 7]]]);
+        $this->assertEquals(['term' => ['tenant_id' => 7]], $q->toArray()['query']);
+    }
+
+    public function testMixedRawAndChainedChildContributesBothStores()
+    {
+        $child = Query::create(['query' => ['term' => ['tenant_id' => 7]]]);
+        $child->match('title', 'x');
+
+        $bool = new Boolean();
+        $bool->filter($child);
+        $q = new Query();
+        $q->bool($bool);
+        $this->assertEquals(
+            ['bool' => ['filter' => [['match' => ['title' => 'x']], ['term' => ['tenant_id' => 7]]]]],
+            $q->toArray()['query']
+        );
+    }
+
+    public function testSameTypeClausesAccumulateInBoolFilter()
+    {
+        $bool = new Boolean();
+        $bool->filter(Query::create(['query' => ['term' => ['tenant_id' => 7]]]));
+        $bool->filter(function (Query $f) {
+            $f->term('tenant_id', 8);
+        });
+
+        $q = new Query();
+        $q->bool($bool);
+        $this->assertEquals(
+            ['bool' => ['filter' => [['term' => ['tenant_id' => 7]], ['term' => ['tenant_id' => 8]]]]],
+            $q->toArray()['query']
+        );
+    }
+
+    public function testRawQueryDuplicateClauseKeyAtTopLevelThrows()
+    {
+        $q = new Query();
+        $q->addQuery(Query::create(['query' => ['term' => ['tenant_id' => 7]]]));
+        $q->term('status', 1);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate query clause key "term"');
+        $q->toArray();
+    }
+
 }

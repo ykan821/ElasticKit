@@ -202,12 +202,17 @@ class Query extends Node
             return [];
         }
 
-        // Flatten nested Query instances
+        // Flatten nested Query instances, merging their raw body store:
+        // a Query built from a raw ES body carries its query in
+        // _properties['query'], which getQueries() alone never surfaces.
         $flat = [];
         foreach ($this->_queries as $item) {
             if ($item instanceof self) {
                 foreach ($item->getQueries() as $clause) {
                     $flat[] = $clause;
+                }
+                if (isset($item->_properties['query']) && is_array($item->_properties['query'])) {
+                    $flat[] = $item->_properties['query'];
                 }
             } else {
                 $flat[] = $item;
@@ -242,6 +247,19 @@ class Query extends Node
                 $clauses[] = [$query->key() => $body];
             } elseif (is_array($query)) {
                 foreach ($query as $field => $item) {
+                    // A lone 'query' key is a raw body fragment, not a clause
+                    // of type "query" (no such ES query type); unwrap it.
+                    if ($field === 'query' && is_array($item)) {
+                        foreach ($item as $rawField => $rawItem) {
+                            if ($rawItem instanceof Node) {
+                                $rawItem = $rawItem->toArray();
+                            }
+                            if ($rawItem !== null) {
+                                $clauses[] = [$rawField => $rawItem];
+                            }
+                        }
+                        continue;
+                    }
                     if ($item instanceof Node) {
                         $item = $item->toArray();
                     }
