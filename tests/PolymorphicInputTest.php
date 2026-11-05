@@ -333,4 +333,23 @@ class PolymorphicInputTest extends DslTestCase
         $q->toArray();
     }
 
+    public function testRawQueryWithEmbeddedNodesResolvesWhenNested()
+    {
+        $inner = new Query();
+        $inner->term('status', 'published');
+        $child = Query::create(['query' => ['bool' => ['must' => [$inner]]]]);
+
+        $bool = new Boolean();
+        $bool->filter($child);
+        $q = new Query();
+        $q->bool($bool);
+
+        // the embedded Query sits two levels below the raw map's top:
+        // buildClauses() alone resolves only one level
+        $this->assertEquals(
+            ['bool' => ['filter' => [['bool' => ['must' => [['term' => ['status' => 'published']]]]]]]],
+            $q->toArray()['query']
+        );
+    }
+
 }

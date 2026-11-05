@@ -212,7 +212,9 @@ class Query extends Node
                     $flat[] = $clause;
                 }
                 if (isset($item->_properties['query']) && is_array($item->_properties['query'])) {
-                    $flat[] = $item->_properties['query'];
+                    // resolve for parity with standalone serialization, which
+                    // runs the raw store through resolveProperties recursively
+                    $flat[] = $item->resolveProperties($item->_properties['query']);
                 }
             } else {
                 $flat[] = $item;
