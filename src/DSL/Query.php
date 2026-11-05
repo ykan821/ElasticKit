@@ -249,6 +249,14 @@ class Query extends Node
                 $clauses[] = [$query->key() => $body];
             } elseif (is_array($query)) {
                 foreach ($query as $field => $item) {
+                    // Resolve container values the way the raw store does
+                    // (ResolvesProperties): a Query contributes its clause
+                    // map, a bare Node its body.
+                    if ($item instanceof self) {
+                        $item = $item->toArray()['query'] ?? null;
+                    } elseif ($item instanceof Node) {
+                        $item = $item->toArray();
+                    }
                     // A lone 'query' key is a raw body fragment, not a clause
                     // of type "query" (no such ES query type); unwrap it.
                     if ($field === 'query' && is_array($item)) {
@@ -261,9 +269,6 @@ class Query extends Node
                             }
                         }
                         continue;
-                    }
-                    if ($item instanceof Node) {
-                        $item = $item->toArray();
                     }
                     if ($item === null) {
                         continue;
