@@ -8,6 +8,8 @@ use Elastic\Elasticsearch\Exception\ClientResponseException;
 use ElasticKit\Index\Index;
 use ElasticKit\Index\Rebuild;
 use ElasticKit\Index\Support\ClientManager;
+use ElasticKit\Index\Support\Event;
+use ElasticKit\Index\Support\EventDispatcher;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
@@ -16,13 +18,16 @@ use Tests\Support\FakeClient;
 /**
  * Rebuild failure cleanup — the swap catch must never delete a new index the
  * alias may already point to (lost-response ambiguity), while verified orphans
- * are removed and the original exception is never masked.
+ * are removed and the original exception is never masked. Post-swap listener
+ * failures never fail the call: they surface as an E_USER_WARNING and run()
+ * returns the committed swap.
  */
 final class RebuildTest extends TestCase
 {
     protected function tearDown(): void
     {
         ClientManager::reset();
+        EventDispatcher::reset();
     }
 
     public function testSuccessfulSwapKeepsNewIndex(): void
@@ -136,6 +141,71 @@ final class RebuildTest extends TestCase
         $this->assertDeletedIndices($client, ['products_v2']);
     }
 
+    public function testAfterListenerFailureDoesNotFailCommittedRebuild(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'existsAlias' => [true],
+            'getAlias' => [['old_1']],
+            'updateAliases' => [],
+        ]);
+
+        EventDispatcher::listen('rebuild.run.after', fn () => throw new RuntimeException('metrics down'));
+
+        $warnings = [];
+        set_error_handler(static function (int $errno, string $errstr) use (&$warnings): bool {
+            $warnings[] = $errstr;
+            return true;
+        });
+
+        try {
+            $result = $rebuild->run();
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(['newIndex' => 'products_v2', 'oldIndex' => 'old_1'], $result);
+        $this->assertCount(1, $warnings);
+        $this->assertStringContainsString('succeeded', $warnings[0]);
+        $this->assertStringContainsString('products_v2', $warnings[0]);
+        $this->assertStringContainsString('metrics down', $warnings[0]);
+        $this->assertDeletedIndices($client, []);
+        $this->assertLockReleased($client);
+    }
+
+    public function testAfterListenerReceivesIndexesOnSuccess(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'existsAlias' => [true],
+            'getAlias' => [['old_1']],
+            'updateAliases' => [],
+        ]);
+
+        $seen = null;
+        EventDispatcher::listen('rebuild.run.after', function (Event $event) use (&$seen): void {
+            $seen = $event;
+        });
+
+        $result = $rebuild->run();
+
+        $this->assertSame('products_v2', $seen->newIndex);
+        $this->assertSame('old_1', $seen->oldIndex);
+        $this->assertSame(['newIndex' => 'products_v2', 'oldIndex' => 'old_1'], $result);
+    }
+
+    public function testBeforeListenerFailurePropagatesRaw(): void
+    {
+        EventDispatcher::listen('rebuild.run.before', fn () => throw new RuntimeException('before boom'));
+
+        [, $rebuild] = $this->makeRebuild([]);
+
+        try {
+            $rebuild->run();
+            $this->fail('Expected the raw before-listener exception.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('before boom', $e->getMessage());
+        }
+    }
+
     /**
      * @param array<string, array<int, mixed>> $indicesScript per-endpoint outcome queue for indices()
      * @param (callable(array<string, mixed>): iterable)|null $source
@@ -179,5 +249,15 @@ final class RebuildTest extends TestCase
         );
 
         $this->assertSame($expected, array_values(array_filter($deleted)));
+    }
+
+    private function assertLockReleased(FakeClient $client): void
+    {
+        $released = array_filter(
+            $client->calls,
+            fn (array $call) => $call['method'] === 'delete' && ($call['params']['index'] ?? null) === '.ek_locks'
+        );
+
+        $this->assertNotEmpty($released, 'Expected the rebuild lock to be released.');
     }
 }

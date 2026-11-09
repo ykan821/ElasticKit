@@ -114,7 +114,9 @@ class Rebuild
      *
      * The lock is always released: on failure doRun()'s exception is rethrown
      * (never masked); on success a release failure surfaces as a RuntimeException
-     * noting the rebuild completed but the lock is stale.
+     * noting the rebuild completed but the lock is stale. A rebuild.run.after
+     * listener failure does not fail the call: run() returns normally and the
+     * failure surfaces as an E_USER_WARNING.
      *
      * @param array<string, mixed> $context user-defined context passed to source()
      * @return array{newIndex: string, oldIndex: string|null}
@@ -319,10 +321,24 @@ class Rebuild
             throw $e;
         }
 
-        $e = new Event('rebuild.run.after', $name);
-        $e->newIndex = $newIndex;
-        $e->oldIndex = $oldIndex;
-        EventDispatcher::dispatch($e);
+        // The swap is committed — an exception here would read as a failed rebuild (rollback).
+        $event = new Event('rebuild.run.after', $name);
+        $event->newIndex = $newIndex;
+        $event->oldIndex = $oldIndex;
+        try {
+            EventDispatcher::dispatch($event);
+        } catch (\Throwable $e) {
+            trigger_error(sprintf(
+                'Rebuild for [%s] succeeded — alias [%s] now points to [%s] (%s) — '
+                . 'but a rebuild.run.after listener failed (%s: %s). The rebuild result stands.',
+                $name,
+                $name,
+                $newIndex,
+                $oldIndex !== null ? "replacing [{$oldIndex}]" : 'no previous backing index',
+                $e::class,
+                $e->getMessage()
+            ), E_USER_WARNING);
+        }
 
         return ['newIndex' => $newIndex, 'oldIndex' => $oldIndex];
     }
