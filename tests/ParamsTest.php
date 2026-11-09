@@ -2,6 +2,7 @@
 
 use Tests\DslTestCase;
 use ElasticKit\DSL\Query;
+use ElasticKit\DSL\Queries\Script;
 
 class ParamsTest extends DslTestCase
 {
@@ -507,6 +508,57 @@ JSON;
         $query->match('title', 'test');
         $query->size(10);
         $query->from(0);
+        $this->assertQuery($expectedJson, $query);
+    }
+
+    public function testScriptFieldWithNestedScriptNodeResolves()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "match_all": {}
+  },
+  "script_fields": {
+    "price_with_tax": {
+      "script": {
+        "source": "doc['price'].value * 1.2"
+      }
+    }
+  }
+}
+JSON;
+        $script = new Script();
+        $script->source("doc['price'].value * 1.2");
+
+        $query = new Query();
+        $query->matchAll();
+        $query->scriptFields(['price_with_tax' => ['script' => $script]]);
+        $this->assertQuery($expectedJson, $query);
+    }
+
+    public function testRuntimeMappingsWithNestedScriptNodeResolves()
+    {
+        $expectedJson = <<<JSON
+{
+  "query": {
+    "match_all": {}
+  },
+  "runtime_mappings": {
+    "day_of_week": {
+      "type": "keyword",
+      "script": {
+        "source": "emit(doc.timestamp.value)"
+      }
+    }
+  }
+}
+JSON;
+        $script = new Script();
+        $script->source('emit(doc.timestamp.value)');
+
+        $query = new Query();
+        $query->matchAll();
+        $query->runtimeMappings(['day_of_week' => ['type' => 'keyword', 'script' => $script]]);
         $this->assertQuery($expectedJson, $query);
     }
 }

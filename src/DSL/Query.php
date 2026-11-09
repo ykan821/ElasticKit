@@ -339,7 +339,7 @@ class Query extends Node
             } elseif ($value instanceof Node) {
                 $value = $value->toArray();
             } elseif (is_array($value)) {
-                $value = array_map(fn ($v) => $v instanceof Node ? $v->toArray() : $v, $value);
+                $value = $this->resolveProperties($value);
             }
             $dsl[$key] = $value;
         }
