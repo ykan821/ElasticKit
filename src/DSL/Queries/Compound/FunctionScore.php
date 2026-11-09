@@ -99,6 +99,10 @@ class FunctionScore extends Node
      */
     public function toArray()
     {
+        if (empty($this->_properties)) {
+            return (object) [];
+        }
+
         $properties = $this->_properties;
 
         if (!empty($properties['functions'])) {

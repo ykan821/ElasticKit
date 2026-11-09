@@ -539,6 +539,11 @@ JSON;
         $this->assertQuery($expectedJson, $query);
     }
 
+    public function testEmptyFunctionScoreSerializesToEmptyObject()
+    {
+        $this->assertEquals(new \stdClass(), (new FunctionScore())->toArray());
+    }
+
     public function testFunctionScoreWithBuilder()
     {
         $expectedJson = <<<JSON
