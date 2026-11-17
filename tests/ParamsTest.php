@@ -561,4 +561,17 @@ JSON;
         $query->runtimeMappings(['day_of_week' => ['type' => 'keyword', 'script' => $script]]);
         $this->assertQuery($expectedJson, $query);
     }
+    public function testRawBodySortConcatenatesWithChainedSort()
+    {
+        $q = Query::create([
+            'query' => ['match_all' => new \stdClass()],
+            'sort' => [['price' => 'asc']],
+        ]);
+        $q->sort('date');
+
+        $this->assertEquals(
+            [['price' => 'asc'], 'date'],
+            $q->toArray()['sort']
+        );
+    }
 }

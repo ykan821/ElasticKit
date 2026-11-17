@@ -10,6 +10,7 @@ use ElasticKit\DSL\Aggs\Pipeline;
 use ElasticKit\DSL\Support\DeepClone;
 use ElasticKit\DSL\Support\RegistersAgg;
 use ElasticKit\DSL\Support\ResolvesProperties;
+use RuntimeException;
 use stdClass;
 
 /**
@@ -86,9 +87,15 @@ class Agg
      *
      * @param Node $node
      * @return $this
+     * @throws RuntimeException when a raw definition is already set
      */
     protected function node(Node $node): static
     {
+        if (!empty($this->_properties)) {
+            throw new RuntimeException(
+                'Cannot switch to builder mode after a raw definition; use a fresh Agg.'
+            );
+        }
         $this->_node = $node;
         $this->_properties = null;
         return $this;
@@ -148,6 +155,9 @@ class Agg
     {
         if ($this->_properties !== null) {
             $resolved = $this->resolveProperties($this->_properties);
+            if (!empty($this->_subAggs)) {
+                $resolved = $this->mergeSubAggs($resolved);
+            }
             if ($this->_alias !== null) {
                 return [$this->_alias => ($resolved === [] ? new stdClass() : $resolved)];
             }
@@ -172,6 +182,32 @@ class Agg
         }
 
         return $inner;
+    }
+
+    /**
+     * Merge sub-aggregations into a serialized body, appending to an
+     * existing 'aggs' map from the raw definition.
+     *
+     * @param array<string, mixed> $body
+     * @return array<string, mixed>
+     * @throws RuntimeException when a raw and a chained sub-agg share an alias
+     */
+    private function mergeSubAggs(array $body): array
+    {
+        $subAggs = [];
+        foreach ($this->_subAggs as $subAgg) {
+            $subAggs += $subAgg->toArray();
+        }
+        if (isset($body['aggs']) && is_array($body['aggs'])) {
+            $clash = array_intersect_key($body['aggs'], $subAggs);
+            if ($clash !== []) {
+                throw new RuntimeException(sprintf('Duplicate aggregation alias "%s".', implode('", "', array_keys($clash))));
+            }
+            $body['aggs'] += $subAggs;
+        } else {
+            $body['aggs'] = $subAggs;
+        }
+        return $body;
     }
 
     /**

@@ -362,4 +362,30 @@ class PolymorphicInputTest extends DslTestCase
         );
     }
 
+    public function testRawBodyAggsMergeWithChainedAggs()
+    {
+        $q = Query::create([
+            'query' => ['match_all' => new \stdClass()],
+            'aggs' => ['raw_sum' => ['sum' => ['field' => 'price']]],
+        ]);
+        $q->aggs('chained_avg', ['avg' => ['field' => 'price']]);
+
+        $this->assertEquals(
+            ['raw_sum', 'chained_avg'],
+            array_keys($q->toArray()['aggs'])
+        );
+    }
+
+    public function testRawBodyAggDuplicateAliasWithChainedThrows()
+    {
+        $q = Query::create([
+            'query' => ['match_all' => new \stdClass()],
+            'aggs' => ['total' => ['sum' => ['field' => 'price']]],
+        ]);
+        $q->aggs('total', ['avg' => ['field' => 'price']]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate aggregation alias "total"');
+        $q->toArray();
+    }
 }

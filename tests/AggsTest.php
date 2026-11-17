@@ -1322,4 +1322,60 @@ JSON;
             $a->bucketScript('bare_string');
         });
     }
+
+    public function testRawAggWithChainedSubAggKeepsBoth()
+    {
+        $agg = Agg::create(['terms' => ['field' => 'status']]);
+        $agg->aggs('avg_price', ['avg' => ['field' => 'price']]);
+
+        $this->assertEquals(
+            ['terms' => ['field' => 'status'], 'aggs' => ['avg_price' => ['avg' => ['field' => 'price']]]],
+            $agg->toArray()
+        );
+    }
+
+    public function testRawAggInnerAggsMergeWithChainedSubAggs()
+    {
+        $agg = Agg::create([
+            'terms' => ['field' => 'status'],
+            'aggs' => ['inner_avg' => ['avg' => ['field' => 'price']]],
+        ]);
+        $agg->alias('by_status');
+        $agg->aggs('chained_max', ['max' => ['field' => 'price']]);
+
+        $this->assertEquals(
+            ['inner_avg', 'chained_max'],
+            array_keys($agg->toArray()['by_status']['aggs'])
+        );
+    }
+
+    public function testRawAndChainedSubAggDuplicateAliasThrows()
+    {
+        $agg = Agg::create([
+            'terms' => ['field' => 'status'],
+            'aggs' => ['avg_price' => ['avg' => ['field' => 'price']]],
+        ]);
+        $agg->aggs('avg_price', ['avg' => ['field' => 'price']]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate aggregation alias "avg_price"');
+        $agg->toArray();
+    }
+
+    public function testBuilderMethodAfterRawDefinitionThrows()
+    {
+        $agg = Agg::create(['terms' => ['field' => 'status']]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot switch to builder mode');
+        $agg->avg('price');
+    }
+
+    public function testBuilderMethodAfterEmptyRawArrayAllowed()
+    {
+        $agg = Agg::create([]);
+        $agg->avg('price');
+
+        $this->assertEquals(['avg' => ['field' => 'price']], $agg->toArray());
+    }
 }

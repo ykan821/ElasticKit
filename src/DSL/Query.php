@@ -308,19 +308,30 @@ class Query extends Node
     }
 
     /**
-     * Build aggregation entries into the DSL array.
+     * Build aggregation entries into the DSL array, merging with a raw
+     * body's 'aggs' map instead of replacing it.
      *
      * @param array<string, mixed> $dsl
      * @return array<string, mixed>
+     * @throws RuntimeException when a raw and a chained agg share an alias
      */
     private function buildAggs(array $dsl): array
     {
         if (empty($this->_aggregations)) {
             return $dsl;
         }
-        $dsl['aggs'] = [];
+        $aggs = [];
         foreach ($this->_aggregations as $agg) {
-            $dsl['aggs'] += $agg->toArray();
+            $aggs += $agg->toArray();
+        }
+        if (isset($dsl['aggs']) && is_array($dsl['aggs'])) {
+            $clash = array_intersect_key($dsl['aggs'], $aggs);
+            if ($clash !== []) {
+                throw new RuntimeException(sprintf('Duplicate aggregation alias "%s".', implode('", "', array_keys($clash))));
+            }
+            $dsl['aggs'] += $aggs;
+        } else {
+            $dsl['aggs'] = $aggs;
         }
         return $dsl;
     }
@@ -340,6 +351,11 @@ class Query extends Node
                 $value = $value->toArray();
             } elseif (is_array($value)) {
                 $value = $this->resolveProperties($value);
+            }
+            // sort lists concatenate with the raw body's entries first;
+            // every other param keeps setter last-wins semantics
+            if ($key === 'sort' && isset($dsl[$key]) && is_array($dsl[$key]) && is_array($value)) {
+                $value = array_merge($dsl[$key], $value);
             }
             $dsl[$key] = $value;
         }
