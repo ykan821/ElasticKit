@@ -120,6 +120,7 @@ class Rebuild
      *
      * @param array<string, mixed> $context user-defined context passed to source()
      * @return array{newIndex: string, oldIndex: string|null}
+     * @throws RuntimeException when the current alias backings carry conflicting definitions
      */
     public function run(array $context = []): array
     {
@@ -213,14 +214,16 @@ class Rebuild
      *
      * @param string $targetIndex the backing index to roll back to
      * @return string the index name that was rolled back from
-     * @throws RuntimeException if alias or target index does not exist
+     * @throws RuntimeException if alias or target index does not exist,
+     *                         or the backings carry conflicting alias definitions
      */
     public function rollback(string $targetIndex): string
     {
         $name = $this->index->name();
         $client = $this->index->getClient()->indices();
 
-        $currentList = array_keys($client->getAlias(['name' => $name])->asArray());
+        $currentResponse = $client->getAlias(['name' => $name])->asArray();
+        $currentList = array_keys($currentResponse);
         if (empty($currentList)) {
             throw new RuntimeException("No index found for alias [{$name}]");
         }
@@ -229,11 +232,13 @@ class Rebuild
             throw new RuntimeException("Target index [{$targetIndex}] does not exist");
         }
 
+        $definition = $this->resolveAliasDefinition($currentResponse);
+
         $actions = [];
         foreach ($currentList as $idx) {
             $actions[] = ['remove' => ['index' => $idx, 'alias' => $name]];
         }
-        $actions[] = ['add' => ['index' => $targetIndex, 'alias' => $name]];
+        $actions[] = ['add' => ['index' => $targetIndex, 'alias' => $name] + $definition];
 
         $client->updateAliases([
             'body' => [
@@ -257,6 +262,16 @@ class Rebuild
 
         EventDispatcher::dispatch(new Event('rebuild.run.before', $name));
 
+        // Resolved before the work: a definition conflict aborts before the import.
+        $aliasExists = $client->existsAlias(['name' => $name])->asBool();
+        $aliasBackings = [];
+        $aliasDefinition = [];
+        if ($aliasExists) {
+            $aliasResponse = $client->getAlias(['name' => $name])->asArray();
+            $aliasBackings = array_keys($aliasResponse);
+            $aliasDefinition = $this->resolveAliasDefinition($aliasResponse);
+        }
+
         $newIndex = $this->createIndex();
 
         try {
@@ -272,14 +287,13 @@ class Rebuild
         try {
             $client->refresh(['index' => $newIndex]);
 
-            if ($client->existsAlias(['name' => $name])->asBool()) {
-                $oldIndices = array_keys($client->getAlias(['name' => $name])->asArray());
-                $oldIndex = $oldIndices[0] ?? null;
+            if ($aliasExists) {
+                $oldIndex = $aliasBackings[0] ?? null;
                 $actions = [];
-                foreach ($oldIndices as $idx) {
+                foreach ($aliasBackings as $idx) {
                     $actions[] = ['remove' => ['index' => $idx, 'alias' => $name]];
                 }
-                $actions[] = ['add' => ['index' => $newIndex, 'alias' => $name]];
+                $actions[] = ['add' => ['index' => $newIndex, 'alias' => $name] + $aliasDefinition];
                 $client->updateAliases(['body' => ['actions' => $actions]]);
             } elseif ($client->exists(['index' => $name])->asBool()) {
                 throw new RuntimeException(
@@ -362,6 +376,60 @@ class Rebuild
         }
 
         return in_array($index, $backing, true);
+    }
+
+    /**
+     * The alias definition (filter, routing, is_write_index) a new backing
+     * inherits from the alias's current backings. is_write_index is excluded
+     * from the conflict check: only one backing may hold it, so asymmetry is
+     * a legal state.
+     *
+     * @param array<string, mixed> $response a getAlias response body
+     * @return array<string, mixed>
+     * @throws RuntimeException when the backings carry conflicting definitions
+     */
+    private function resolveAliasDefinition(array $response): array
+    {
+        $name = $this->index->name();
+        $definitions = [];
+        $hasWriteIndex = false;
+        foreach ($response as $backing => $entry) {
+            $definition = $entry['aliases'][$name] ?? [];
+            $hasWriteIndex = $hasWriteIndex || !empty($definition['is_write_index']);
+            unset($definition['is_write_index']);
+            $definitions[$backing] = $definition;
+        }
+
+        $first = null;
+        $firstBacking = null;
+        foreach ($definitions as $backing => $definition) {
+            if ($first === null) {
+                $first = $definition;
+                $firstBacking = $backing;
+                continue;
+            }
+            // loose ==: key order must not read as a conflict
+            if ($definition != $first) {
+                throw new RuntimeException(sprintf(
+                    'Alias [%s] backs indexes with different definitions: [%s => %s, %s => %s]. '
+                    . 'A rebuild collapses the backings into one index and cannot carry both. '
+                    . 'Align the definitions or split the alias, then re-run.',
+                    $name,
+                    $firstBacking,
+                    json_encode($first) ?: '',
+                    $backing,
+                    json_encode($definition) ?: ''
+                ));
+            }
+        }
+
+        if ($first === null) {
+            return [];
+        }
+        if ($hasWriteIndex) {
+            $first['is_write_index'] = true;
+        }
+        return $first;
     }
 
     /**

@@ -6,9 +6,9 @@ namespace Tests\Support;
 
 /**
  * In-memory indices() namespace double. Outcome queues per endpoint:
- * bool for exists/existsAlias, a list of backing index names for getAlias
- * (returned keyed like the real getAlias response), Throwable to throw.
- * Missing entries fall back to a safe ok/true result.
+ * bool for exists/existsAlias, backing index names or an index => definition
+ * map for getAlias, Throwable to throw. Missing entries fall back to a safe
+ * ok/true result.
  */
 final class FakeIndicesNamespace
 {
@@ -36,9 +36,14 @@ final class FakeIndicesNamespace
         }
 
         if ($method === 'getAlias') {
+            $alias = $args[0]['name'] ?? '';
             $backing = [];
-            foreach ((array) $next as $index) {
-                $backing[$index] = ['aliases' => []];
+            foreach ((array) $next as $index => $definition) {
+                if (is_array($definition)) {
+                    $backing[$index] = ['aliases' => [$alias => $definition]];
+                } else {
+                    $backing[$definition] = ['aliases' => []];
+                }
             }
             return new FakeResult(true, $backing);
         }

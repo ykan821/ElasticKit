@@ -206,6 +206,74 @@ final class RebuildTest extends TestCase
         }
     }
 
+    public function testSwapCarriesAliasDefinition(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'existsAlias' => [true],
+            'getAlias' => [['old_1' => ['filter' => ['term' => ['tenant_id' => 7]]]]],
+            'updateAliases' => [],
+        ]);
+
+        $rebuild->run();
+
+        $this->assertSame(
+            ['index' => 'products_v2', 'alias' => 'products', 'filter' => ['term' => ['tenant_id' => 7]]],
+            $this->aliasActions($client)[1]['add']
+        );
+    }
+
+    public function testSwapInheritsWriteIndexAcrossBackings(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'existsAlias' => [true],
+            'getAlias' => [['old_1' => [], 'old_2' => ['is_write_index' => true]]],
+            'updateAliases' => [],
+        ]);
+
+        $rebuild->run();
+
+        $this->assertSame(
+            ['index' => 'products_v2', 'alias' => 'products', 'is_write_index' => true],
+            $this->aliasActions($client)[2]['add']
+        );
+    }
+
+    public function testConflictingAliasDefinitionsAbortBeforeImport(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'existsAlias' => [true],
+            'getAlias' => [['v1' => ['filter' => ['a' => 1]], 'v2' => ['filter' => ['b' => 2]]]],
+        ]);
+
+        try {
+            $rebuild->run();
+            $this->fail('Expected a conflicting-definitions RuntimeException.');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('different definitions', $e->getMessage());
+        }
+
+        $created = array_filter($client->indices->calls, fn (array $call) => $call['method'] === 'create');
+        $this->assertSame([], array_values($created));
+        $this->assertDeletedIndices($client, []);
+    }
+
+    public function testRollbackCarriesAliasDefinition(): void
+    {
+        [$client, $rebuild] = $this->makeRebuild([
+            'getAlias' => [['products_v2' => ['filter' => ['term' => ['tenant_id' => 7]]]]],
+            'exists' => [true],
+            'updateAliases' => [],
+        ]);
+
+        $from = $rebuild->rollback('old_1');
+
+        $this->assertSame('products_v2', $from);
+        $this->assertSame(
+            ['index' => 'old_1', 'alias' => 'products', 'filter' => ['term' => ['tenant_id' => 7]]],
+            $this->aliasActions($client)[1]['add']
+        );
+    }
+
     /**
      * @param array<string, array<int, mixed>> $indicesScript per-endpoint outcome queue for indices()
      * @param (callable(array<string, mixed>): iterable)|null $source
@@ -259,5 +327,19 @@ final class RebuildTest extends TestCase
         );
 
         $this->assertNotEmpty($released, 'Expected the rebuild lock to be released.');
+    }
+
+    /**
+     * @return array<int, array<string, mixed>> the updateAliases actions
+     */
+    private function aliasActions(FakeClient $client): array
+    {
+        foreach ($client->indices->calls as $call) {
+            if ($call['method'] === 'updateAliases') {
+                return $call['params']['body']['actions'];
+            }
+        }
+
+        return [];
     }
 }

@@ -266,6 +266,9 @@ class Manager
     /**
      * Atomically swap an alias from another index to this index.
      *
+     * The add action carries no alias definition; re-apply a filter or
+     * routing config with addAlias() after the swap.
+     *
      * @param string $alias
      * @param string $fromIndex
      * @return array<string, mixed>
