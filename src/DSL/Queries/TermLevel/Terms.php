@@ -27,6 +27,7 @@ class Terms extends Node
      */
     public function values(string $field, array $values): static
     {
-        return $this->addProperty($field, $values);
+        $this->fromKeyValue($field, $values);
+        return $this;
     }
 }

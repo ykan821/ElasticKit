@@ -185,4 +185,21 @@ final class SearchTest extends TestCase
 
         return $client;
     }
+    public function testCloneIsolatesTheQuery(): void
+    {
+        $client = $this->client(['search' => [['hits' => []], ['hits' => []]]]);
+
+        $search = $this->index->newQuery()->term('status', 'published')->size(10);
+        $copy = clone $search;
+        $copy->size(99);
+
+        $search->get();
+        $copy->get();
+
+        $sizes = array_map(
+            static fn (array $call) => $call['params']['body']['size'],
+            array_filter($client->calls, static fn (array $call) => $call['method'] === 'search')
+        );
+        $this->assertSame([10, 99], $sizes);
+    }
 }

@@ -39,6 +39,13 @@ class Search
         $this->query = $query ?? new Query();
     }
 
+    // A cloned Search delegates to its own Query; without this, the copy's
+    // chained calls would mutate the original's query.
+    public function __clone()
+    {
+        $this->query = clone $this->query;
+    }
+
     /**
      * Custom routing value to target specific shards.
      *

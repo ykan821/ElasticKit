@@ -303,4 +303,17 @@ JSON;
         });
         $this->assertQuery($expectedJson, $query);
     }
+    public function testTermsValuesFluentMatchesConstructor()
+    {
+        $fluent = (new Terms())->values('tags', ['php', 'es']);
+
+        $this->assertEquals(Terms::create('tags', ['php', 'es'])->toArray(), $fluent->toArray());
+    }
+
+    public function testTermsValuesLiftsSiblingBoost()
+    {
+        $terms = (new Terms())->values('tags', ['php'])->boost(2.0);
+
+        $this->assertEquals(['tags' => ['php'], 'boost' => 2.0], $terms->toArray());
+    }
 }
