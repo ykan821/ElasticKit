@@ -16,6 +16,7 @@ use ElasticKit\DSL\Queries\Compound\Functions\RandomScore;
 use ElasticKit\DSL\Queries\Compound\FunctionScore;
 use ElasticKit\DSL\Queries\Compound\Functions\ScriptScore;
 use ElasticKit\DSL\Queries\Script;
+use ElasticKit\DSL\Queries\TermLevel\Term;
 
 class CompoundQueriesTest extends DslTestCase
 {
@@ -542,6 +543,19 @@ JSON;
     public function testEmptyFunctionScoreSerializesToEmptyObject()
     {
         $this->assertEquals(new \stdClass(), (new FunctionScore())->toArray());
+    }
+
+    public function testFunctionScoreFilterAcceptsBareNode()
+    {
+        $fs = FunctionScore::create();
+        $fs->functions([['filter' => Term::create('status', 'ok'), 'weight' => 2]]);
+
+        $query = new Query();
+        $query->functionScore($fs);
+        $this->assertQuery(
+            '{"query":{"function_score":{"functions":[{"filter":{"term":{"status":"ok"}},"weight":2}]}}}',
+            $query
+        );
     }
 
     public function testFunctionScoreWithBuilder()

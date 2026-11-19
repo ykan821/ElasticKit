@@ -111,8 +111,11 @@ class FunctionScore extends Node
                     $properties['functions'][$key] = $function->toArray();
                 } elseif ($function instanceof Node) {
                     $properties['functions'][$key] = [$function->key() => $function->toArray()];
+                } elseif (!empty($function['filter']) && $function['filter'] instanceof Query) {
+                    $function['filter'] = $function['filter']->toArray()['query'] ?? null;
+                    $properties['functions'][$key] = $function;
                 } elseif (!empty($function['filter']) && $function['filter'] instanceof Node) {
-                    $function['filter'] = $function['filter']->toArray()['query'];
+                    $function['filter'] = [$function['filter']->key() => $function['filter']->toArray()];
                     $properties['functions'][$key] = $function;
                 }
             }
