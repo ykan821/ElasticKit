@@ -301,6 +301,19 @@ class PolymorphicInputTest extends DslTestCase
         $this->assertEquals(['term' => ['tenant_id' => 7]], $q->toArray()['query']);
     }
 
+    public function testUnwrappedRawMapResolvesNestedQueryObjects()
+    {
+        $tenant = new Query();
+        $tenant->match('title', 'php');
+
+        $q = new Query();
+        $q->addQuery(['query' => ['bool' => $tenant]]);
+        $this->assertEquals(
+            ['bool' => ['match' => ['title' => 'php']]],
+            $q->toArray()['query']
+        );
+    }
+
     public function testMixedRawAndChainedChildContributesBothStores()
     {
         $child = Query::create(['query' => ['term' => ['tenant_id' => 7]]]);

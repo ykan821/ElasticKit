@@ -574,4 +574,18 @@ JSON;
             $q->toArray()['sort']
         );
     }
+
+    public function testObjectFormRawSortWrapsIntoTheConcatenatedList()
+    {
+        $q = Query::create([
+            'query' => ['match_all' => new \stdClass()],
+            'sort' => ['price' => 'asc'],
+        ]);
+        $q->sort('date');
+
+        $this->assertEquals(
+            [['price' => 'asc'], 'date'],
+            $q->toArray()['sort']
+        );
+    }
 }

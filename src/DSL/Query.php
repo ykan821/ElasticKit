@@ -261,7 +261,10 @@ class Query extends Node
                     // of type "query" (no such ES query type); unwrap it.
                     if ($field === 'query' && is_array($item)) {
                         foreach ($item as $rawField => $rawItem) {
-                            if ($rawItem instanceof Node) {
+                            // same container resolution as above the gate
+                            if ($rawItem instanceof self) {
+                                $rawItem = $rawItem->toArray()['query'] ?? null;
+                            } elseif ($rawItem instanceof Node) {
                                 $rawItem = $rawItem->toArray();
                             }
                             if ($rawItem !== null) {
@@ -352,10 +355,12 @@ class Query extends Node
             } elseif (is_array($value)) {
                 $value = $this->resolveProperties($value);
             }
-            // sort lists concatenate with the raw body's entries first;
-            // every other param keeps setter last-wins semantics
+            // sort lists concatenate with the raw body's entries first; an
+            // object-form raw sort wraps as a single spec; every other param
+            // keeps setter last-wins semantics
             if ($key === 'sort' && isset($dsl[$key]) && is_array($dsl[$key]) && is_array($value)) {
-                $value = array_merge($dsl[$key], $value);
+                $raw = array_is_list($dsl[$key]) ? $dsl[$key] : [$dsl[$key]];
+                $value = array_merge($raw, $value);
             }
             $dsl[$key] = $value;
         }
